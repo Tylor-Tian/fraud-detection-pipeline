@@ -11,7 +11,9 @@ from .models import Transaction
 
 
 @click.group()
-@click.option("--config", "config_path", type=click.Path(exists=True), help="Path to configuration YAML file")
+@click.option(
+    "--config", "config_path", type=click.Path(exists=True), help="Path to configuration YAML file"
+)
 @click.pass_context
 def cli(ctx: click.Context, config_path: Optional[str] = None) -> None:
     """Fraud detection command line interface."""
