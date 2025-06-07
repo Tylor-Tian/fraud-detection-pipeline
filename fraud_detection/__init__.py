@@ -13,5 +13,3 @@ from .models import RiskScore, Transaction
 from .exceptions import FraudDetectionError
 
 __all__ = ["FraudDetectionSystem", "RiskScore", "Transaction", "FraudDetectionError"]
-
-

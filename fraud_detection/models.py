@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field, validator
 
 class RiskLevel(str, Enum):
     """Risk level enumeration."""
+
     LOW = "LOW"
     MEDIUM = "MEDIUM"
     HIGH = "HIGH"
@@ -16,6 +17,7 @@ class RiskLevel(str, Enum):
 
 class Location(BaseModel):
     """Location model."""
+
     latitude: float = Field(..., ge=-90, le=90)
     longitude: float = Field(..., ge=-180, le=180)
     country: Optional[str] = None
@@ -24,6 +26,7 @@ class Location(BaseModel):
 
 class Transaction(BaseModel):
     """Transaction input model."""
+
     transaction_id: str = Field(..., min_length=1)
     user_id: str = Field(..., min_length=1)
     amount: float = Field(..., gt=0)
@@ -32,16 +35,17 @@ class Transaction(BaseModel):
     location: Optional[Location] = None
     device_id: Optional[str] = None
     card_number_hash: Optional[str] = None
-    
-    @validator('timestamp')
+
+    @validator("timestamp")
     def timestamp_not_future(cls, v):
         if v > datetime.now():
-            raise ValueError('Transaction timestamp cannot be in the future')
+            raise ValueError("Transaction timestamp cannot be in the future")
         return v
 
 
 class RiskScore(BaseModel):
     """Risk score output model."""
+
     transaction_id: str
     risk_score: float = Field(..., ge=0, le=1)
     risk_level: RiskLevel
@@ -56,6 +60,7 @@ class RiskScore(BaseModel):
 
 class UserProfile(BaseModel):
     """User risk profile model."""
+
     user_id: str
     transaction_count: int = 0
     average_amount: float = 0.0
@@ -64,5 +69,3 @@ class UserProfile(BaseModel):
     last_transaction: Optional[datetime] = None
     locations: List[Location] = []
     fraud_count: int = 0
-
-
