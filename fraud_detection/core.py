@@ -4,9 +4,9 @@ import time
 from datetime import datetime, timedelta
 from typing import Dict, List, Tuple, Optional, Any
 import numpy as np
-from sklearn.preprocessing import StandardScaler
-from sklearn.ensemble import IsolationForest
-import joblib
+from sklearn.preprocessing import StandardScaler  # type: ignore
+from sklearn.ensemble import IsolationForest  # type: ignore
+import joblib  # type: ignore
 from loguru import logger
 
 from .models import Transaction, RiskScore, RiskLevel, UserProfile, Location

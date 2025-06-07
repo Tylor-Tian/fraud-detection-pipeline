@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 from time import time
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Response, status
@@ -17,8 +17,12 @@ from .models import RiskScore, Transaction
 # They are initialized to None to avoid heavy dependencies like Redis during import
 # Actual application code can replace them with real implementations
 
-detector = None  # type: Any
-storage = None  # type: Any
+if TYPE_CHECKING:  # pragma: no cover - for type checkers only
+    from .core import FraudDetectionSystem
+    from .storage import RedisStorage
+
+detector: Optional["FraudDetectionSystem"] = None
+storage: Optional["RedisStorage"] = None
 
 app = FastAPI(title="Fraud Detection API")
 
@@ -56,7 +60,9 @@ def process_transaction_endpoint(
 ) -> RiskScore:
     """Process a single transaction."""
     start = time()
-    result: RiskScore = detector.process_transaction(transaction)  # type: ignore
+    if detector is None:
+        raise HTTPException(status_code=500, detail="Detector not initialized")
+    result: RiskScore = detector.process_transaction(transaction)
     transactions_total.inc()
     processing_time_seconds.observe(time() - start)
     return result
@@ -72,7 +78,9 @@ def process_batch_endpoint(
 ) -> Dict[str, Any]:
     """Process a batch of transactions."""
     start = time()
-    results = [detector.process_transaction(tx) for tx in batch.transactions]  # type: ignore
+    if detector is None:
+        raise HTTPException(status_code=500, detail="Detector not initialized")
+    results = [detector.process_transaction(tx) for tx in batch.transactions]
     transactions_total.inc(len(results))
     processing_time_seconds.observe(time() - start)
     return {
@@ -84,7 +92,9 @@ def process_batch_endpoint(
 @app.get("/users/{user_id}/profile")
 def get_user_profile(user_id: str, authorization: str = Depends(require_auth)) -> Dict[str, Any]:
     """Retrieve a user's risk profile."""
-    profile = storage.get_user_profile(user_id)  # type: ignore
+    if storage is None:
+        raise HTTPException(status_code=500, detail="Storage not initialized")
+    profile = storage.get_user_profile(user_id)
     if profile is None:
         raise HTTPException(status_code=404, detail="User not found")
     return profile.dict()

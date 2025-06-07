@@ -47,7 +47,7 @@ class RedisStorage:
         try:
             count = self.client.incr(key)
             self.client.expire(key, 3600)  # Expire after 1 hour
-            return count
+            return int(count)
         except redis.RedisError as e:
             logger.error(f"Failed to increment velocity counter: {e}")
             return 0
