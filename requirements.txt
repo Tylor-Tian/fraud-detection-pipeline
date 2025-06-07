@@ -10,7 +10,7 @@ PyYAML>=5.4.0
 click>=8.0.0
 
 # API dependencies
-fastapi>=0.68.0
+fastapi>=0.68,<0.104
 uvicorn>=0.15.0
 python-jose>=3.3.0
 passlib>=1.7.4
