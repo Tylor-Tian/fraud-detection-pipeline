@@ -1,7 +1,7 @@
 """Configuration management for fraud detection system."""
 
 import os
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import yaml
 from pydantic import BaseSettings, Field
 from pathlib import Path
