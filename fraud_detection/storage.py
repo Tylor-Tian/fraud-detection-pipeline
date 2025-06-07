@@ -15,7 +15,7 @@ class RedisStorage:
 
     def __init__(
         self, host: str = "localhost", port: int = 6379, db: int = 0, password: Optional[str] = None
-    ):
+    ) -> None:
         """Initialize Redis connection."""
         try:
             self.client = redis.Redis(
@@ -26,21 +26,6 @@ class RedisStorage:
         except redis.RedisError as e:
             logger.error(f"Failed to connect to Redis: {e}")
             raise StorageError(f"Redis connection failed: {e}")
-
-    def store_transaction(self, transaction: Transaction, risk_score: float, ttl: int = 86400 * 7):
-        """Store transaction with risk score."""
-        key = f"tx:{transaction.transaction_id}"
-        data = {
-            **transaction.dict(),
-            "risk_score": risk_score,
-            "processed_at": datetime.now().isoformat(),
-        }
-
-        try:
-            self.client.setex(key, ttl, json.dumps(data, default=str))
-        except redis.RedisError as e:
-            logger.error(f"Failed to store transaction: {e}")
-            raise StorageError(f"Failed to store transaction: {e}")
 
     def get_user_profile(self, user_id: str) -> Optional[UserProfile]:
         """Get user profile from storage."""
@@ -54,29 +39,6 @@ class RedisStorage:
         except (redis.RedisError, json.JSONDecodeError) as e:
             logger.error(f"Failed to get user profile: {e}")
             return None
-
-    def update_user_profile(self, user_id: str, transaction: Transaction, is_fraud: bool):
-        """Update user profile with new transaction."""
-        profile = self.get_user_profile(user_id) or UserProfile(user_id=user_id)
-
-        # Update profile
-        profile.transaction_count += 1
-        profile.total_amount += transaction.amount
-        profile.average_amount = profile.total_amount / profile.transaction_count
-        profile.last_transaction = transaction.timestamp
-
-        if is_fraud:
-            profile.fraud_count += 1
-
-        if transaction.location and transaction.location not in profile.locations:
-            profile.locations.append(transaction.location)
-
-        # Store updated profile
-        key = f"user:{user_id}"
-        try:
-            self.client.set(key, json.dumps(profile.dict(), default=str))
-        except redis.RedisError as e:
-            logger.error(f"Failed to update user profile: {e}")
 
     def increment_velocity_counter(self, user_id: str) -> int:
         """Increment and get velocity counter for user."""
@@ -112,7 +74,7 @@ class RedisStorage:
             logger.error(f"Failed to get user devices: {e}")
             return []
 
-    def add_user_device(self, user_id: str, device_id: str):
+    def add_user_device(self, user_id: str, device_id: str) -> None:
         """Add a device to user's known devices."""
         key = f"user:{user_id}:devices"
 
@@ -133,7 +95,7 @@ class RedisStorage:
             logger.error(f"Failed to get recent amounts: {e}")
             return []
 
-    def add_transaction_amount(self, user_id: str, amount: float):
+    def add_transaction_amount(self, user_id: str, amount: float) -> None:
         """Add transaction amount to recent history."""
         key = f"user:{user_id}:recent_amounts"
 
@@ -155,7 +117,7 @@ class RedisStorage:
             logger.error(f"Failed to get recent merchants: {e}")
             return []
 
-    def add_merchant_interaction(self, user_id: str, merchant_id: str):
+    def add_merchant_interaction(self, user_id: str, merchant_id: str) -> None:
         """Add merchant to recent interactions."""
         key = f"user:{user_id}:recent_merchants"
 
@@ -177,7 +139,7 @@ class RedisStorage:
             logger.error(f"Failed to get recent risk scores: {e}")
             return []
 
-    def add_risk_score(self, user_id: str, risk_score: float):
+    def add_risk_score(self, user_id: str, risk_score: float) -> None:
         """Add risk score to history."""
         key = f"user:{user_id}:risk_scores"
 
@@ -188,7 +150,7 @@ class RedisStorage:
         except redis.RedisError as e:
             logger.error(f"Failed to add risk score: {e}")
 
-    def update_user_profile(self, user_id: str, transaction: Transaction, is_fraud: bool):
+    def update_user_profile(self, user_id: str, transaction: Transaction, is_fraud: bool) -> None:
         """Update user profile with new transaction."""
         profile = self.get_user_profile(user_id) or UserProfile(user_id=user_id)
 
@@ -222,7 +184,9 @@ class RedisStorage:
         except redis.RedisError as e:
             logger.error(f"Failed to update user profile: {e}")
 
-    def store_transaction(self, transaction: Transaction, risk_score: float, ttl: int = 86400 * 7):
+    def store_transaction(
+        self, transaction: Transaction, risk_score: float, ttl: int = 86400 * 7
+    ) -> None:
         """Store transaction with risk score."""
         key = f"tx:{transaction.transaction_id}"
         data = {

@@ -87,9 +87,7 @@ def get_user_profile(user_id: str, authorization: str = Depends(require_auth)) -
     profile = storage.get_user_profile(user_id)  # type: ignore
     if profile is None:
         raise HTTPException(status_code=404, detail="User not found")
-    if hasattr(profile, "dict"):
-        return profile.dict()
-    return profile
+    return profile.dict()
 
 
 @app.get("/metrics")

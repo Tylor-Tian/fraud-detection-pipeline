@@ -1,5 +1,5 @@
 import json
-from typing import Optional, List
+from typing import Optional, List, TextIO
 
 import click
 import uvicorn
@@ -40,7 +40,7 @@ def serve(ctx: click.Context, host: str, port: int) -> None:
     uvicorn.run(app, host=host, port=port)
 
 
-def _load_transactions(file_obj) -> List[Transaction]:
+def _load_transactions(file_obj: TextIO) -> List[Transaction]:
     try:
         data = json.load(file_obj)
         if isinstance(data, dict) and "transactions" in data:
@@ -55,7 +55,7 @@ def _load_transactions(file_obj) -> List[Transaction]:
 @click.argument("input_file", type=click.File("r"))
 @click.option("--output", "output_file", type=click.File("w"), help="Optional output file")
 @click.pass_context
-def batch_process(ctx: click.Context, input_file, output_file) -> None:
+def batch_process(ctx: click.Context, input_file: TextIO, output_file: Optional[TextIO]) -> None:
     """Process a batch of transactions from a JSON file."""
     settings: Settings = ctx.obj["settings"]
     detector = FraudDetectionSystem(

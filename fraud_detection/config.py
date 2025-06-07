@@ -2,7 +2,7 @@
 
 import os
 from typing import Dict, Any, Optional
-import yaml
+import yaml  # type: ignore
 from pydantic import BaseSettings, Field
 from pathlib import Path
 

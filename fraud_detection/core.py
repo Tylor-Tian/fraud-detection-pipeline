@@ -35,7 +35,7 @@ class FraudDetectionSystem:
         redis_host: str = "localhost",
         redis_port: int = 6379,
         model_path: str = "models/fraud_model.pkl",
-    ):
+    ) -> None:
         """
         Initialize fraud detection system.
 
@@ -52,7 +52,7 @@ class FraudDetectionSystem:
 
         logger.info("Fraud Detection System initialized successfully")
 
-    def _load_model(self, model_path: str):
+    def _load_model(self, model_path: str) -> Any:
         """Load pre-trained ML model."""
         try:
             model = joblib.load(model_path)
@@ -83,7 +83,7 @@ class FraudDetectionSystem:
             "SUSPICIOUS_PATTERN": 0.6,
         }
 
-    def _initialize_feature_scaler(self):
+    def _initialize_feature_scaler(self) -> None:
         """Initialize feature scaler with typical values."""
         # Create dummy data with typical ranges for initialization
         dummy_features = np.array(
@@ -163,7 +163,7 @@ class FraudDetectionSystem:
             logger.error(f"Error processing transaction {transaction.transaction_id}: {e}")
             raise FraudDetectionError(f"Failed to process transaction: {e}")
 
-    def _validate_transaction(self, transaction: Transaction):
+    def _validate_transaction(self, transaction: Transaction) -> None:
         """Validate transaction data."""
         if transaction.amount <= 0:
             raise ValueError("Transaction amount must be positive")
