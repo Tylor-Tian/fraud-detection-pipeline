@@ -6,6 +6,7 @@ A high-performance, production-ready fraud detection system designed to process 
 
 - **Real-time Processing**: Handle 100,000+ transactions per second with sub-5-minute detection latency
 - **Hybrid Detection**: Combines ML models with rule-based systems for 95%+ accuracy
+- **Pluggable ML Algorithms**: Choose between Isolation Forest or LOF for anomaly detection
 - **Scalable Architecture**: Built on Redis and Kafka for horizontal scaling
 - **Comprehensive Monitoring**: Detailed metrics and alerting via Prometheus/Grafana
 - **Easy Integration**: RESTful API and Kafka streaming interfaces
@@ -87,7 +88,8 @@ from fraud_detection import FraudDetectionSystem
 # Initialize the system
 detector = FraudDetectionSystem(
     redis_host="localhost",
-    model_path="models/fraud_model.pkl"
+    model_path="models/fraud_model.pkl",
+    model_type="isolation_forest"  # or "lof"
 )
 
 # Process a single transaction
@@ -138,7 +140,7 @@ rules:
 - [Integration Guide](docs/integration.md) - How to integrate with your systems
 - [Performance Tuning](docs/performance.md) - Optimization strategies
 
-> **Note**: Documentation files under `docs/` are being prepared. Some currently only contain the placeholder text "文档待补充".
+All documentation is now available under the `docs/` directory.
 
 ## 🧪 Testing
 
