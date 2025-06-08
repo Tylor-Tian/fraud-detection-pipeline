@@ -2,7 +2,7 @@
 
 import time
 from datetime import datetime, timedelta
-from typing import Dict, List, Tuple, Optional, Any
+from typing import Dict, List, Tuple, Optional, Any, Union
 import numpy as np
 from sklearn.preprocessing import StandardScaler  # type: ignore
 from sklearn.ensemble import IsolationForest  # type: ignore
@@ -10,7 +10,7 @@ import joblib  # type: ignore
 from loguru import logger
 
 from .models import Transaction, RiskScore, RiskLevel, UserProfile, Location
-from .storage import RedisStorage
+from .storage import RedisStorage, InMemoryStorage
 from .exceptions import StorageError
 from .utils import (
     calculate_distance,
@@ -45,12 +45,11 @@ class FraudDetectionSystem:
             redis_port: Redis server port
             model_path: Path to trained ML model
         """
+        self.storage: Union[RedisStorage, InMemoryStorage]
         try:
             self.storage = RedisStorage(host=redis_host, port=redis_port)
         except StorageError:
             logger.warning("Redis unavailable, using in-memory storage")
-            from .storage import InMemoryStorage
-
             self.storage = InMemoryStorage()
         self.scaler = StandardScaler()
         self.ml_model = self._load_model(model_path)

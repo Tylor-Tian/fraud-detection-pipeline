@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, TYPE_CHECKING, Union
 from time import time
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Response, status
@@ -19,10 +19,10 @@ from .models import RiskScore, Transaction
 
 if TYPE_CHECKING:  # pragma: no cover - for type checkers only
     from .core import FraudDetectionSystem
-    from .storage import RedisStorage
+    from .storage import RedisStorage, InMemoryStorage
 
 detector: Optional["FraudDetectionSystem"] = None
-storage: Optional["RedisStorage"] = None
+storage: Optional[Union["RedisStorage", "InMemoryStorage"]] = None
 
 app = FastAPI(title="Fraud Detection API")
 
