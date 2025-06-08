@@ -243,7 +243,7 @@ class FraudDetectionSystem:
         flags = []
 
         # High amount check
-        if transaction.amount > settings.rules.high_amount_threshold:
+        if transaction.amount >= settings.rules.high_amount_threshold:
             flags.append("HIGH_AMOUNT")
 
         # Velocity check (already incremented in feature extraction)
@@ -255,7 +255,7 @@ class FraudDetectionSystem:
             flags.append("UNUSUAL_TIME")
 
         # Amount deviation check
-        if features["user_transaction_count"] > 5:  # Only for users with history
+        if features["user_transaction_count"] >= 5:  # Only for users with history
             if features["normalized_deviation"] > 3:  # 3x normal amount
                 flags.append("AMOUNT_DEVIATION")
 
