@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 import numpy as np
 import joblib
 from sklearn.ensemble import IsolationForest
+from sklearn.neighbors import LocalOutlierFactor
 
 from fraud_detection.core import FraudDetectionSystem
 from fraud_detection.models import Transaction, RiskLevel, Location, UserProfile
@@ -272,5 +273,16 @@ class TestFraudDetectionSystem:
         # Should raise the exception (or handle it based on implementation)
         with pytest.raises(Exception):
             detector.process_transaction(transaction)
+
+    def test_custom_model_type_lof(self, mock_storage, tmp_path):
+        """Initialize detector with LOF model type."""
+        model_path = tmp_path / "nofile.pkl"
+        detector = FraudDetectionSystem(
+            redis_host="localhost",
+            model_path=str(model_path),
+            model_type="lof",
+        )
+        detector.storage = mock_storage
+        assert isinstance(detector.ml_model, LocalOutlierFactor)
 
 

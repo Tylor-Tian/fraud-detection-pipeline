@@ -9,8 +9,16 @@ curl -X POST https://api.example.com/v1/transactions \
   -d '{
     "transaction_id": "TXN123456",
     "user_id": "USER001",
-    "amount": 150.00
+    "amount": 150.00,
+    "merchant_id": "MERCH001",
+    "timestamp": "2024-01-15T10:30:00Z"
   }'
 ```
 
-文档待补充
+## 主要接口
+
+- `GET /health` - 服务健康检查。
+- `POST /transactions` - 处理单笔交易并返回风险评分。
+- `POST /transactions/batch` - 批量处理交易，返回每笔交易的结果。
+- `GET /users/{user_id}/profile` - 查询用户风险画像。
+
