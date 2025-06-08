@@ -1,11 +1,14 @@
 # setup.py - Professional package setup
 
+from pathlib import Path
 from setuptools import setup, find_packages
 
-with open("README.md", "r", encoding="utf-8") as fh:
+ROOT_DIR = Path(__file__).parent
+
+with open(ROOT_DIR / "README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
-with open("requirements.txt", "r", encoding="utf-8") as fh:
+with open(ROOT_DIR / "requirements.txt", "r", encoding="utf-8") as fh:
     requirements = [line.strip() for line in fh if line.strip() and not line.startswith("#")]
 
 setup(
