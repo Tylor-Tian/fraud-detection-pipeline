@@ -60,10 +60,10 @@ class Settings(BaseSettings):
     debug: bool = Field(default=False, env="DEBUG")
     log_level: str = Field(default="INFO", env="LOG_LEVEL")
 
-    redis: RedisConfig = RedisConfig()
-    kafka: KafkaConfig = KafkaConfig()
-    model: ModelConfig = ModelConfig()
-    rules: RulesConfig = RulesConfig()
+    redis: RedisConfig = Field(default_factory=RedisConfig)
+    kafka: KafkaConfig = Field(default_factory=KafkaConfig)
+    model: ModelConfig = Field(default_factory=ModelConfig)
+    rules: RulesConfig = Field(default_factory=RulesConfig)
 
     class Config:
         env_file = ".env"
