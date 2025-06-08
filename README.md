@@ -63,6 +63,9 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
+> **Note**: The project currently supports **Pydantic 1.x**. Ensure you have
+> `pydantic>=1.8,<2.0` installed when setting up the environment.
+
 ### Running with Docker
 
 ```bash
