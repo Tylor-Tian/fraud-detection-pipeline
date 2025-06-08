@@ -1,10 +1,11 @@
 """Configuration management for fraud detection system."""
 
 import os
-from typing import Dict, Any, Optional
+from pathlib import Path
+from typing import Any, Dict, Optional
+
 import yaml  # type: ignore
 from pydantic import BaseSettings, Field
-from pathlib import Path
 
 
 class RedisConfig(BaseSettings):
@@ -36,6 +37,7 @@ class ModelConfig(BaseSettings):
 
     model_path: str = Field(default="models/fraud_model.pkl", env="MODEL_PATH")
     threshold: float = Field(default=0.7, env="MODEL_THRESHOLD")
+    algorithm: str = Field(default="isolation_forest", env="MODEL_ALGORITHM")
     feature_version: str = Field(default="v1", env="MODEL_FEATURE_VERSION")
 
     class Config:

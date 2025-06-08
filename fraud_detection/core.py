@@ -2,25 +2,26 @@
 
 import time
 from datetime import datetime, timedelta
-from typing import Dict, List, Tuple, Optional, Any, Union
-import numpy as np
-from sklearn.preprocessing import StandardScaler  # type: ignore
-from sklearn.ensemble import IsolationForest  # type: ignore
-import joblib  # type: ignore
-from loguru import logger
+from typing import Any, Dict, List, Optional, Tuple, Union
 
-from .models import Transaction, RiskScore, RiskLevel, UserProfile, Location
-from .storage import RedisStorage, InMemoryStorage
-from .exceptions import StorageError
+import joblib  # type: ignore
+import numpy as np
+from loguru import logger
+from sklearn.ensemble import IsolationForest  # type: ignore
+from sklearn.neighbors import LocalOutlierFactor  # type: ignore
+from sklearn.preprocessing import StandardScaler  # type: ignore
+
+from .config import settings
+from .exceptions import FraudDetectionError, ModelError, StorageError
+from .models import Location, RiskLevel, RiskScore, Transaction, UserProfile
+from .storage import InMemoryStorage, RedisStorage
 from .utils import (
     calculate_distance,
     calculate_velocity,
-    normalize_amount,
-    get_time_features,
     generate_transaction_hash,
+    get_time_features,
+    normalize_amount,
 )
-from .config import settings
-from .exceptions import ModelError, FraudDetectionError
 
 
 class FraudDetectionSystem:
@@ -36,6 +37,7 @@ class FraudDetectionSystem:
         redis_host: str = "localhost",
         redis_port: int = 6379,
         model_path: str = "models/fraud_model.pkl",
+        model_type: str = settings.model.algorithm,
     ) -> None:
         """
         Initialize fraud detection system.
@@ -44,6 +46,7 @@ class FraudDetectionSystem:
             redis_host: Redis server host
             redis_port: Redis server port
             model_path: Path to trained ML model
+            model_type: Algorithm used for the ML model
         """
         self.storage: Union[RedisStorage, InMemoryStorage]
         try:
@@ -52,22 +55,28 @@ class FraudDetectionSystem:
             logger.warning("Redis unavailable, using in-memory storage")
             self.storage = InMemoryStorage()
         self.scaler = StandardScaler()
-        self.ml_model = self._load_model(model_path)
+        self.model_type = model_type
+        self.ml_model = self._load_model(model_path, model_type)
         self.rule_weights = self._initialize_rule_weights()
         self._initialize_feature_scaler()
 
         logger.info("Fraud Detection System initialized successfully")
 
-    def _load_model(self, model_path: str) -> Any:
-        """Load pre-trained ML model."""
+    def _load_model(self, model_path: str, model_type: str) -> Any:
+        """Load pre-trained ML model or initialize a default one."""
         try:
             model = joblib.load(model_path)
             logger.info(f"Loaded model from {model_path}")
             return model
         except FileNotFoundError:
-            logger.warning(f"Model file not found at {model_path}, using default IsolationForest")
+            logger.warning(
+                f"Model file not found at {model_path}, using default {model_type} model"
+            )
             # Create default model if file not found
-            model = IsolationForest(contamination=0.1, random_state=42, n_estimators=100)
+            if model_type.lower() in {"lof", "local_outlier_factor"}:
+                model = LocalOutlierFactor(n_neighbors=20, contamination=0.1, novelty=True)
+            else:
+                model = IsolationForest(contamination=0.1, random_state=42, n_estimators=100)
             # Train on dummy data to initialize
             X_dummy = np.random.randn(1000, 7)
             model.fit(X_dummy)
