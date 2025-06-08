@@ -138,6 +138,8 @@ rules:
 - [Integration Guide](docs/integration.md) - How to integrate with your systems
 - [Performance Tuning](docs/performance.md) - Optimization strategies
 
+> **Note**: Documentation files under `docs/` are being prepared. Some currently only contain the placeholder text "文档待补充".
+
 ## 🧪 Testing
 
 ```bash
