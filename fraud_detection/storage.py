@@ -2,7 +2,7 @@
 
 import json
 from typing import Dict, List, Optional, Any
-from datetime import datetime, timedelta
+from datetime import datetime
 import redis
 from loguru import logger
 
