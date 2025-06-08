@@ -37,7 +37,7 @@ class Transaction(BaseModel):
     card_number_hash: Optional[str] = None
 
     @validator("timestamp")
-    def timestamp_not_future(cls, v):
+    def timestamp_not_future(cls, v: datetime) -> datetime:
         if v > datetime.now():
             raise ValueError("Transaction timestamp cannot be in the future")
         return v

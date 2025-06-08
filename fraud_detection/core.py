@@ -2,15 +2,16 @@
 
 import time
 from datetime import datetime, timedelta
-from typing import Dict, List, Tuple, Optional, Any
+from typing import Dict, List, Tuple, Optional, Any, Union
 import numpy as np
-from sklearn.preprocessing import StandardScaler
-from sklearn.ensemble import IsolationForest
-import joblib
+from sklearn.preprocessing import StandardScaler  # type: ignore
+from sklearn.ensemble import IsolationForest  # type: ignore
+import joblib  # type: ignore
 from loguru import logger
 
 from .models import Transaction, RiskScore, RiskLevel, UserProfile, Location
-from .storage import RedisStorage
+from .storage import RedisStorage, InMemoryStorage
+from .exceptions import StorageError
 from .utils import (
     calculate_distance,
     calculate_velocity,
@@ -35,7 +36,7 @@ class FraudDetectionSystem:
         redis_host: str = "localhost",
         redis_port: int = 6379,
         model_path: str = "models/fraud_model.pkl",
-    ):
+    ) -> None:
         """
         Initialize fraud detection system.
 
@@ -44,7 +45,12 @@ class FraudDetectionSystem:
             redis_port: Redis server port
             model_path: Path to trained ML model
         """
-        self.storage = RedisStorage(host=redis_host, port=redis_port)
+        self.storage: Union[RedisStorage, InMemoryStorage]
+        try:
+            self.storage = RedisStorage(host=redis_host, port=redis_port)
+        except StorageError:
+            logger.warning("Redis unavailable, using in-memory storage")
+            self.storage = InMemoryStorage()
         self.scaler = StandardScaler()
         self.ml_model = self._load_model(model_path)
         self.rule_weights = self._initialize_rule_weights()
@@ -52,7 +58,7 @@ class FraudDetectionSystem:
 
         logger.info("Fraud Detection System initialized successfully")
 
-    def _load_model(self, model_path: str):
+    def _load_model(self, model_path: str) -> Any:
         """Load pre-trained ML model."""
         try:
             model = joblib.load(model_path)
@@ -83,7 +89,7 @@ class FraudDetectionSystem:
             "SUSPICIOUS_PATTERN": 0.6,
         }
 
-    def _initialize_feature_scaler(self):
+    def _initialize_feature_scaler(self) -> None:
         """Initialize feature scaler with typical values."""
         # Create dummy data with typical ranges for initialization
         dummy_features = np.array(
@@ -163,7 +169,7 @@ class FraudDetectionSystem:
             logger.error(f"Error processing transaction {transaction.transaction_id}: {e}")
             raise FraudDetectionError(f"Failed to process transaction: {e}")
 
-    def _validate_transaction(self, transaction: Transaction):
+    def _validate_transaction(self, transaction: Transaction) -> None:
         """Validate transaction data."""
         if transaction.amount <= 0:
             raise ValueError("Transaction amount must be positive")
@@ -237,7 +243,7 @@ class FraudDetectionSystem:
         flags = []
 
         # High amount check
-        if transaction.amount > settings.rules.high_amount_threshold:
+        if transaction.amount >= settings.rules.high_amount_threshold:
             flags.append("HIGH_AMOUNT")
 
         # Velocity check (already incremented in feature extraction)
@@ -249,7 +255,7 @@ class FraudDetectionSystem:
             flags.append("UNUSUAL_TIME")
 
         # Amount deviation check
-        if features["user_transaction_count"] > 5:  # Only for users with history
+        if features["user_transaction_count"] >= 5:  # Only for users with history
             if features["normalized_deviation"] > 3:  # 3x normal amount
                 flags.append("AMOUNT_DEVIATION")
 
@@ -374,17 +380,18 @@ class FraudDetectionSystem:
             recent_amounts = self.storage.get_recent_transaction_amounts(
                 transaction.user_id, limit=5
             )
-            if recent_amounts:
-                avg_recent = np.mean(recent_amounts)
+            if isinstance(recent_amounts, list) and recent_amounts:
+                avg_recent = float(np.mean(recent_amounts))
                 if transaction.amount > avg_recent * 5:
                     return True
 
         # Rapid transactions to different merchants
         if features["current_velocity"] > 3:
             recent_merchants = self.storage.get_recent_merchants(transaction.user_id, limit=5)
-            if len(set(recent_merchants)) == len(recent_merchants):
-                # All different merchants
-                return True
+            if isinstance(recent_merchants, list) and len(recent_merchants) > 0:
+                if len(set(recent_merchants)) == len(recent_merchants):
+                    # All different merchants
+                    return True
 
         return False
 
@@ -393,12 +400,14 @@ class FraudDetectionSystem:
         if not flags:
             return 0.0
 
-        total_weight = sum(self.rule_weights.get(flag, 0.1) for flag in flags)
+        normalized_flags = ["HIGH_VELOCITY" if flag == "VELOCITY" else flag for flag in flags]
+        total_weight = sum(self.rule_weights.get(flag, 0.1) for flag in normalized_flags)
         return min(total_weight, 1.0)
 
     def _calculate_final_score(self, rule_flags: List[str], ml_score: float) -> Tuple[float, bool]:
         """Combine ML and rule scores for final decision."""
-        rule_score = self._calculate_rule_score(rule_flags)
+        normalized_flags = ["HIGH_VELOCITY" if f == "VELOCITY" else f for f in rule_flags]
+        rule_score = self._calculate_rule_score(normalized_flags)
 
         # Weighted combination (60% ML, 40% rules)
         final_score = (0.6 * ml_score) + (0.4 * rule_score)
@@ -411,14 +420,14 @@ class FraudDetectionSystem:
         ]
 
         for combo in critical_combinations:
-            if combo.issubset(set(rule_flags)):
+            if combo.issubset(set(normalized_flags)):
                 final_score = max(final_score, 0.9)
 
         # Ensure score is in valid range
         final_score = float(np.clip(final_score, 0, 1))
 
         # Determine if fraud
-        is_fraud = final_score > settings.model.threshold
+        is_fraud = final_score >= settings.model.threshold
 
         return final_score, is_fraud
 

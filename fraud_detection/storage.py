@@ -15,7 +15,7 @@ class RedisStorage:
 
     def __init__(
         self, host: str = "localhost", port: int = 6379, db: int = 0, password: Optional[str] = None
-    ):
+    ) -> None:
         """Initialize Redis connection."""
         try:
             self.client = redis.Redis(
@@ -23,24 +23,9 @@ class RedisStorage:
             )
             self.client.ping()
             logger.info(f"Connected to Redis at {host}:{port}")
-        except redis.RedisError as e:
+        except Exception as e:
             logger.error(f"Failed to connect to Redis: {e}")
             raise StorageError(f"Redis connection failed: {e}")
-
-    def store_transaction(self, transaction: Transaction, risk_score: float, ttl: int = 86400 * 7):
-        """Store transaction with risk score."""
-        key = f"tx:{transaction.transaction_id}"
-        data = {
-            **transaction.dict(),
-            "risk_score": risk_score,
-            "processed_at": datetime.now().isoformat(),
-        }
-
-        try:
-            self.client.setex(key, ttl, json.dumps(data, default=str))
-        except redis.RedisError as e:
-            logger.error(f"Failed to store transaction: {e}")
-            raise StorageError(f"Failed to store transaction: {e}")
 
     def get_user_profile(self, user_id: str) -> Optional[UserProfile]:
         """Get user profile from storage."""
@@ -51,32 +36,9 @@ class RedisStorage:
             if data:
                 return UserProfile(**json.loads(data))
             return None
-        except (redis.RedisError, json.JSONDecodeError) as e:
+        except Exception as e:
             logger.error(f"Failed to get user profile: {e}")
             return None
-
-    def update_user_profile(self, user_id: str, transaction: Transaction, is_fraud: bool):
-        """Update user profile with new transaction."""
-        profile = self.get_user_profile(user_id) or UserProfile(user_id=user_id)
-
-        # Update profile
-        profile.transaction_count += 1
-        profile.total_amount += transaction.amount
-        profile.average_amount = profile.total_amount / profile.transaction_count
-        profile.last_transaction = transaction.timestamp
-
-        if is_fraud:
-            profile.fraud_count += 1
-
-        if transaction.location and transaction.location not in profile.locations:
-            profile.locations.append(transaction.location)
-
-        # Store updated profile
-        key = f"user:{user_id}"
-        try:
-            self.client.set(key, json.dumps(profile.dict(), default=str))
-        except redis.RedisError as e:
-            logger.error(f"Failed to update user profile: {e}")
 
     def increment_velocity_counter(self, user_id: str) -> int:
         """Increment and get velocity counter for user."""
@@ -85,8 +47,8 @@ class RedisStorage:
         try:
             count = self.client.incr(key)
             self.client.expire(key, 3600)  # Expire after 1 hour
-            return count
-        except redis.RedisError as e:
+            return int(count)
+        except Exception as e:
             logger.error(f"Failed to increment velocity counter: {e}")
             return 0
 
@@ -97,7 +59,7 @@ class RedisStorage:
         try:
             score = self.client.get(key)
             return float(score) if score else 0.1
-        except (redis.RedisError, ValueError) as e:
+        except Exception as e:
             logger.error(f"Failed to get merchant risk score: {e}")
             return 0.1
 
@@ -108,18 +70,18 @@ class RedisStorage:
         try:
             devices = self.client.smembers(key)
             return list(devices) if devices else []
-        except redis.RedisError as e:
+        except Exception as e:
             logger.error(f"Failed to get user devices: {e}")
             return []
 
-    def add_user_device(self, user_id: str, device_id: str):
+    def add_user_device(self, user_id: str, device_id: str) -> None:
         """Add a device to user's known devices."""
         key = f"user:{user_id}:devices"
 
         try:
             self.client.sadd(key, device_id)
             self.client.expire(key, 86400 * 90)  # 90 days
-        except redis.RedisError as e:
+        except Exception as e:
             logger.error(f"Failed to add user device: {e}")
 
     def get_recent_transaction_amounts(self, user_id: str, limit: int = 10) -> List[float]:
@@ -129,11 +91,11 @@ class RedisStorage:
         try:
             amounts = self.client.lrange(key, 0, limit - 1)
             return [float(a) for a in amounts] if amounts else []
-        except (redis.RedisError, ValueError) as e:
+        except Exception as e:
             logger.error(f"Failed to get recent amounts: {e}")
             return []
 
-    def add_transaction_amount(self, user_id: str, amount: float):
+    def add_transaction_amount(self, user_id: str, amount: float) -> None:
         """Add transaction amount to recent history."""
         key = f"user:{user_id}:recent_amounts"
 
@@ -141,7 +103,7 @@ class RedisStorage:
             self.client.lpush(key, amount)
             self.client.ltrim(key, 0, 99)  # Keep last 100
             self.client.expire(key, 86400 * 30)  # 30 days
-        except redis.RedisError as e:
+        except Exception as e:
             logger.error(f"Failed to add transaction amount: {e}")
 
     def get_recent_merchants(self, user_id: str, limit: int = 10) -> List[str]:
@@ -151,11 +113,11 @@ class RedisStorage:
         try:
             merchants = self.client.lrange(key, 0, limit - 1)
             return merchants if merchants else []
-        except redis.RedisError as e:
+        except Exception as e:
             logger.error(f"Failed to get recent merchants: {e}")
             return []
 
-    def add_merchant_interaction(self, user_id: str, merchant_id: str):
+    def add_merchant_interaction(self, user_id: str, merchant_id: str) -> None:
         """Add merchant to recent interactions."""
         key = f"user:{user_id}:recent_merchants"
 
@@ -163,7 +125,7 @@ class RedisStorage:
             self.client.lpush(key, merchant_id)
             self.client.ltrim(key, 0, 99)  # Keep last 100
             self.client.expire(key, 86400 * 30)  # 30 days
-        except redis.RedisError as e:
+        except Exception as e:
             logger.error(f"Failed to add merchant interaction: {e}")
 
     def get_recent_risk_scores(self, user_id: str, limit: int = 10) -> List[float]:
@@ -173,11 +135,11 @@ class RedisStorage:
         try:
             scores = self.client.lrange(key, 0, limit - 1)
             return [float(s) for s in scores] if scores else []
-        except (redis.RedisError, ValueError) as e:
+        except Exception as e:
             logger.error(f"Failed to get recent risk scores: {e}")
             return []
 
-    def add_risk_score(self, user_id: str, risk_score: float):
+    def add_risk_score(self, user_id: str, risk_score: float) -> None:
         """Add risk score to history."""
         key = f"user:{user_id}:risk_scores"
 
@@ -185,10 +147,10 @@ class RedisStorage:
             self.client.lpush(key, risk_score)
             self.client.ltrim(key, 0, 99)  # Keep last 100
             self.client.expire(key, 86400 * 30)  # 30 days
-        except redis.RedisError as e:
+        except Exception as e:
             logger.error(f"Failed to add risk score: {e}")
 
-    def update_user_profile(self, user_id: str, transaction: Transaction, is_fraud: bool):
+    def update_user_profile(self, user_id: str, transaction: Transaction, is_fraud: bool) -> None:
         """Update user profile with new transaction."""
         profile = self.get_user_profile(user_id) or UserProfile(user_id=user_id)
 
@@ -219,10 +181,12 @@ class RedisStorage:
             if hasattr(transaction, "device_id") and transaction.device_id:
                 self.add_user_device(user_id, transaction.device_id)
 
-        except redis.RedisError as e:
+        except Exception as e:
             logger.error(f"Failed to update user profile: {e}")
 
-    def store_transaction(self, transaction: Transaction, risk_score: float, ttl: int = 86400 * 7):
+    def store_transaction(
+        self, transaction: Transaction, risk_score: float, ttl: int = 86400 * 7
+    ) -> None:
         """Store transaction with risk score."""
         key = f"tx:{transaction.transaction_id}"
         data = {
@@ -237,6 +201,74 @@ class RedisStorage:
             # Also add risk score to user's history
             self.add_risk_score(transaction.user_id, risk_score)
 
-        except redis.RedisError as e:
+        except Exception as e:
             logger.error(f"Failed to store transaction: {e}")
             raise StorageError(f"Failed to store transaction: {e}")
+
+
+class InMemoryStorage:
+    """Simple in-memory storage fallback used when Redis is unavailable."""
+
+    def __init__(self) -> None:
+        self.users: Dict[str, UserProfile] = {}
+        self.transactions: Dict[str, Dict[str, Any]] = {}
+        self.velocity: Dict[str, int] = {}
+        self.merchant_risk: Dict[str, float] = {}
+        self.risk_scores: Dict[str, List[float]] = {}
+
+    def get_user_profile(self, user_id: str) -> Optional[UserProfile]:
+        return self.users.get(user_id)
+
+    def increment_velocity_counter(self, user_id: str) -> int:
+        self.velocity[user_id] = self.velocity.get(user_id, 0) + 1
+        return self.velocity[user_id]
+
+    def get_merchant_risk_score(self, merchant_id: str) -> float:
+        return self.merchant_risk.get(merchant_id, 0.1)
+
+    def get_user_devices(self, user_id: str) -> List[str]:
+        return []
+
+    def add_user_device(self, user_id: str, device_id: str) -> None:
+        pass
+
+    def get_recent_transaction_amounts(self, user_id: str, limit: int = 10) -> List[float]:
+        return []
+
+    def add_transaction_amount(self, user_id: str, amount: float) -> None:
+        pass
+
+    def get_recent_merchants(self, user_id: str, limit: int = 10) -> List[str]:
+        return []
+
+    def add_merchant_interaction(self, user_id: str, merchant_id: str) -> None:
+        pass
+
+    def get_recent_risk_scores(self, user_id: str, limit: int = 10) -> List[float]:
+        return self.risk_scores.get(user_id, [])[:limit]
+
+    def add_risk_score(self, user_id: str, risk_score: float) -> None:
+        self.risk_scores.setdefault(user_id, []).insert(0, risk_score)
+
+    def update_user_profile(self, user_id: str, transaction: Transaction, is_fraud: bool) -> None:
+        profile = self.get_user_profile(user_id) or UserProfile(user_id=user_id)
+        profile.transaction_count += 1
+        profile.total_amount += transaction.amount
+        profile.average_amount = profile.total_amount / profile.transaction_count
+        profile.last_transaction = transaction.timestamp
+        if is_fraud:
+            profile.fraud_count += 1
+        if transaction.location and transaction.location not in profile.locations:
+            profile.locations.append(transaction.location)
+        self.users[user_id] = profile
+        self.add_transaction_amount(user_id, transaction.amount)
+        self.add_merchant_interaction(user_id, transaction.merchant_id)
+
+    def store_transaction(
+        self, transaction: Transaction, risk_score: float, ttl: int = 86400 * 7
+    ) -> None:
+        self.transactions[transaction.transaction_id] = {
+            **transaction.dict(),
+            "risk_score": risk_score,
+            "processed_at": datetime.now().isoformat(),
+        }

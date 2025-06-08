@@ -19,6 +19,10 @@ addopts = "-ra -q --strict-markers"
 testpaths = [
     "tests",
 ]
+markers = [
+    "integration: integration tests",
+    "performance: performance tests",
+]
 
 [tool.coverage.run]
 source = ["fraud_detection"]
